@@ -73,10 +73,40 @@ echo "  - recipient@example.com (password: TestPass123!)"
 echo ""
 
 echo "3. Uploading sample attachment to S3..."
-echo "This is a test email attachment" > /tmp/test-document.pdf
-aws s3 cp /tmp/test-document.pdf "s3://$BUCKET_NAME/emails/test-msg-001/test-document.pdf"
-rm /tmp/test-document.pdf
-echo "✓ Sample file uploaded"
+# Create sample file in /tmp
+TEMP_FILE="/tmp/test-document-$$.pdf"
+echo "This is a test email attachment" > "$TEMP_FILE"
+
+# Verify file was created
+if [ ! -f "$TEMP_FILE" ]; then
+    echo "❌ Error: Failed to create temporary file"
+    exit 1
+fi
+
+# Change to /tmp to avoid special character issues in CWD
+# AWS CLI tries to compute relative paths based on CWD
+cd /tmp
+
+# Upload to S3
+if aws s3 cp "$TEMP_FILE" "s3://$BUCKET_NAME/emails/test-msg-001/test-document.pdf"; then
+    echo "✓ Sample file uploaded"
+    UPLOAD_SUCCESS=true
+else
+    echo "❌ Error: Failed to upload file to S3"
+    UPLOAD_SUCCESS=false
+fi
+
+# Clean up
+rm -f "$TEMP_FILE"
+
+# Return to original directory
+cd - > /dev/null
+
+# Exit if upload failed
+if [ "$UPLOAD_SUCCESS" != "true" ]; then
+    exit 1
+fi
+
 echo ""
 
 echo "4. Populating DynamoDB with sample data..."

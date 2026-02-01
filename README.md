@@ -2,9 +2,20 @@
 
 Terraform infrastructure for secure, scalable email attachment delivery using AWS CloudFront, S3, Lambda, and Cognito.
 
+- [HOW_IT_WORKS.md](HOW_IT_WORKS.md) - How it works - kinda deep dive!
+
 ## 🚀 Quick Start
 
 ```bash
+# Clone repository
+git clone <your-repo>
+cd email-attachments-infrastructure
+
+# Copy example variables
+cp terraform.tfvars.example terraform.tfvars
+
+# Edit variables with your values
+nano terraform.tfvars
 # 1. Generate keys
 ./scripts/generate_keys.sh
 
@@ -154,7 +165,7 @@ This will create all resources (~10-15 minutes).
 
 ### Step 7: Post-Deployment Configuration
 
-After Terraform completes, run the setup script to finalize configuration:
+After Terraform completes, run the setup script to finalize configuration (manual actions mentioned in output are automated here):
 
 ```bash
 chmod +x scripts/setup.sh

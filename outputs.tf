@@ -86,34 +86,54 @@ output "secrets_manager_secret_name" {
   value       = aws_secretsmanager_secret.cloudfront_private_key.name
 }
 
-# Quick start commands
-output "quick_start_commands" {
-  description = "Quick start commands for testing"
+# Next steps after deployment
+output "next_steps" {
+  description = "Post-deployment setup instructions"
   value = <<-EOT
-    # 1. Create test user (username must be email):
-    aws cognito-idp admin-create-user \
-      --user-pool-id ${aws_cognito_user_pool.main.id} \
-      --username test@example.com \
-      --user-attributes Name=email,Value=test@example.com \
-      --temporary-password TempPass123!
 
-    # 2. Set permanent password:
-    aws cognito-idp admin-set-user-password \
-      --user-pool-id ${aws_cognito_user_pool.main.id} \
-      --username test@example.com \
-      --password SecurePass123! \
-      --permanent
+    ========================================
+    🎉 Infrastructure Deployment Complete!
+    ========================================
 
-    # 3. Get JWT token:
-    aws cognito-idp initiate-auth \
-      --auth-flow USER_PASSWORD_AUTH \
-      --client-id ${aws_cognito_user_pool_client.main.id} \
-      --auth-parameters USERNAME=test@example.com,PASSWORD=SecurePass123!
+    NEXT STEPS:
+    
+    1. Run the post-deployment setup script:
+       
+       chmod +x scripts/setup.sh
+       ./scripts/setup.sh
+       
+       This will:
+       - Upload CloudFront private key to Secrets Manager
+       - Create test users (testuser@example.com, recipient@example.com)
+       - Upload sample attachment to S3
+       - Populate DynamoDB with test data
 
-    # 4. Test API:
-    curl -X POST ${aws_api_gateway_stage.prod.invoke_url}/generate-url \
-      -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-      -H "Content-Type: application/json" \
-      -d '{"operation":"generate_url","s3_key":"emails/test/file.pdf"}'
+    2. Test your deployment:
+       
+       # Get JWT token
+       JWT_TOKEN=$(aws cognito-idp initiate-auth \
+         --auth-flow USER_PASSWORD_AUTH \
+         --client-id ${aws_cognito_user_pool_client.main.id} \
+         --auth-parameters USERNAME=testuser@example.com,PASSWORD=TestPass123! \
+         --query 'AuthenticationResult.IdToken' \
+         --output text)
+       
+       # Generate signed URL
+       curl -X POST ${aws_api_gateway_stage.prod.invoke_url}/generate-url \
+         -H "Authorization: Bearer $JWT_TOKEN" \
+         -H "Content-Type: application/json" \
+         -d '{"operation":"generate_url","s3_key":"emails/test-msg-001/test-document.pdf"}' | jq .
+       
+       # Open the signed_url from the response in your browser to download the file
+
+    3. View your resources:
+       
+       API Gateway URL: ${aws_api_gateway_stage.prod.invoke_url}/generate-url
+       CloudFront Domain: ${aws_cloudfront_distribution.attachments.domain_name}
+       S3 Bucket: ${aws_s3_bucket.attachments.id}
+       Cognito User Pool: ${aws_cognito_user_pool.main.id}
+
+    See README.md for complete documentation.
+    
   EOT
 }
