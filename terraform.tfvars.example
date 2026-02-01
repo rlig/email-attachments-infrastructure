@@ -1,0 +1,9 @@
+aws_region   = "us-east-1"
+project_name = "email-app"
+environment  = "prod"
+
+# Optional overrides
+# lambda_memory_size = 512
+# lambda_timeout = 30
+# dynamodb_billing_mode = "PAY_PER_REQUEST"
+# cloudfront_price_class = "PriceClass_All"

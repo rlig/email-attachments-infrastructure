@@ -1,0 +1,32 @@
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!terraform.tfvars.example
+.terraform.lock.hcl
+
+# Keys (NEVER commit private keys!)
+keys/
+*.pem
+
+# Lambda
+lambda_package.zip
+lambda_build/
+lambda/__pycache__/
+lambda/*.pyc
+lambda/*/  # Ignore installed dependencies
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temp files
+dist-config.json
+response.json
