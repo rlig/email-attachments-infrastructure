@@ -145,17 +145,16 @@ For this traffic level, on-demand pricing is more cost-effective than provisione
 #### 4. Amazon CloudFront 💰
 
 **Assumptions:**
-- Average file size: 5MB per attachment
-- Monthly data transfer: 129.6M × 5MB = **648 TB**
+- Average file size: **1.8 MB per attachment** (updated)
+- Monthly data transfer: 129.6M × 1.8MB = **233.28 TB**
 
 **Data Transfer Pricing (Europe - Frankfurt):**
 ```
-First 10TB:     10TB × $0.085/GB     = $870
-Next 40TB:      40TB × $0.080/GB     = $3,276.80
-Next 100TB:     100TB × $0.060/GB    = $6,144
-Next 350TB:     350TB × $0.040/GB    = $14,336
-Remaining 148TB: 148TB × $0.040/GB   = $6,062.08
-Total data transfer:                   $30,688.88
+First 10TB:     10TB × $0.085/GB × 1024    = $870.40
+Next 40TB:      40TB × $0.080/GB × 1024    = $3,276.80
+Next 100TB:     100TB × $0.060/GB × 1024   = $6,144.00
+Remaining 83.28TB: 83.28TB × $0.040/GB × 1024 = $3,411.63
+Total data transfer:                          $13,702.83
 ```
 
 **Request Pricing (Europe):**
@@ -163,7 +162,7 @@ Total data transfer:                   $30,688.88
 HTTPS requests: 129.6M × $0.012/10,000 = $155.52
 ```
 
-**Monthly Cost: $30,844** (+0.1% vs US, mainly request costs)
+**Monthly Cost: $13,858** (vs $30,844 with 5MB files - **55% reduction!**)
 
 ---
 
@@ -176,12 +175,12 @@ HTTPS requests: 129.6M × $0.012/10,000 = $155.52
 129.6M × $0.0004/1,000 = $51.84
 ```
 
-**Storage (assuming 10TB):**
+**Storage (assuming 3.5TB with 1.8MB files):**
 ```
-10,240GB × $0.0245/GB = $250.88
+3,584GB × $0.0245/GB = $87.81
 ```
 
-**Monthly Cost: $303** (+5.6% vs US)
+**Monthly Cost: $140** (reduced from $303 due to smaller files)
 
 ---
 
@@ -227,6 +226,8 @@ Ingestion: 648GB × $0.50/GB = $324
 Storage (14-day retention): 648GB × $0.03/GB × 0.5 = $9.72
 ```
 
+**Note:** Log volume unchanged (depends on function code, not file size)
+
 **API Gateway Logs:**
 ```
 Ingestion: ~150GB × $0.50/GB = $75
@@ -243,27 +244,27 @@ Ingestion: ~150GB × $0.50/GB = $75
 
 ### 💰 TOTAL MONTHLY COST (Without Optimizations)
 
-**Frankfurt (eu-central-1) Pricing:**
+**Frankfurt (eu-central-1) Pricing with 1.8 MB Average File Size:**
 
-| Service | Monthly Cost | vs US East |
-|---------|--------------|------------|
-| API Gateway | $551 | +21% |
-| Lambda | $235 | same |
-| DynamoDB (on-demand) | $91 | +18% |
-| CloudFront | $30,844 | +0.1% |
-| S3 | $303 | +5.6% |
-| Cognito | $0 | same |
-| Secrets Manager | $1 | same |
-| CloudWatch | $409 | same |
-| **TOTAL** | **$32,434/month** | **+0.5%** |
+| Service | Monthly Cost | Notes |
+|---------|--------------|-------|
+| API Gateway | $551 | +21% vs US East |
+| Lambda | $235 | Same as US East |
+| DynamoDB (on-demand) | $91 | +18% vs US East |
+| CloudFront | $13,858 | **55% lower** (1.8MB vs 5MB) |
+| S3 | $140 | Smaller storage needs |
+| Cognito | $0 | Free tier |
+| Secrets Manager | $1 | Same as US East |
+| CloudWatch | $409 | Same as US East |
+| **TOTAL** | **$15,285/month** | **53% lower than 5MB scenario** |
 
-**Annual Cost: ~$389,208** (+$1,836/year vs US East)
+**Annual Cost: ~$183,420**
 
-**Key Findings:**
-- Frankfurt is ~0.5% more expensive overall
-- API Gateway (+21%) and DynamoDB (+18%) are notably higher
-- CloudFront data transfer costs are similar (Europe pricing)
-- Lambda and CloudWatch costs are identical
+**Key Findings with 1.8 MB Files:**
+- **CloudFront now only 91% of total costs** (down from 95%)
+- File size has massive impact on total costs
+- 1.8MB vs 5MB = **$17,149/month savings** ($205,788/year)
+- Frankfurt pricing difference is negligible with smaller files
 
 ---
 
@@ -504,8 +505,10 @@ resource "aws_cloudfront_distribution" "attachments" {
 ```
 For text-heavy attachments (documents, HTML, JSON):
 Compression ratio: 70% reduction
-Expected savings: 10-15% of CloudFront costs = ~$3,000-$4,600/month
+Expected savings: 10-15% of CloudFront costs = ~$1,400-$2,100/month
 ```
+
+**Note:** With 1.8MB average file size, compression savings are smaller but still valuable.
 
 **Already included in baseline costs** ✅
 
@@ -513,28 +516,33 @@ Expected savings: 10-15% of CloudFront costs = ~$3,000-$4,600/month
 
 ## 💰 OPTIMIZED COST BREAKDOWN (Frankfurt)
 
-### With All Optimizations Applied
+### With All Optimizations Applied (1.8 MB Files)
 
 | Service | Baseline Cost | Optimized Cost | Savings |
 |---------|---------------|----------------|---------|
 | API Gateway | $551 | $166 | $385 |
 | Lambda (ECDSA + cookies) | $235 | $21 | $214 |
 | DynamoDB (on-demand) | $91 | $91 | $0 |
-| CloudFront (file optimization) | $30,844 | $25,621 | $5,223 |
-| S3 | $303 | $303 | $0 |
+| CloudFront (file optimization) | $13,858 | $11,500 | $2,358 |
+| S3 | $140 | $140 | $0 |
 | Cognito | $0 | $0 | $0 |
 | CloudWatch (reduced logging) | $409 | $65 | $344 |
 | Secrets Manager | $1 | $1 | $0 |
-| **TOTAL** | **$32,434/month** | **$26,268/month** | **$6,166/month** |
+| **TOTAL** | **$15,285/month** | **$11,984/month** | **$3,301/month** |
 
-**Annual Cost: $315,216** (down from $389,208)
+**Annual Cost: $143,808** (down from $183,420)
 
-**Total Savings: 19% reduction** 🎉
+**Total Savings: 22% reduction** 🎉
 
-**Frankfurt vs US East (Optimized):**
-- Frankfurt optimized: $26,268/month
-- US East optimized: $26,188/month
-- Difference: +$80/month (+0.3%)
+**Impact of 1.8 MB File Size:**
+- Baseline reduced from $32,434 to $15,285 (53% lower)
+- Optimized reduced from $26,268 to $11,984 (54% lower)
+- **Smaller files = dramatically lower costs!**
+
+**Frankfurt vs US East (Optimized, 1.8MB):**
+- Frankfurt optimized: $11,984/month
+- US East optimized: ~$11,920/month
+- Difference: +$64/month (+0.5%)
 
 ### Not Recommended at This Scale
 - ❌ ElastiCache Redis: Costs more than it saves
@@ -570,13 +578,13 @@ Expected savings: 10-15% of CloudFront costs = ~$3,000-$4,600/month
 
 ## Recommendations
 
-### For 50 QPS (~130M requests/month) in Frankfurt:
+### For 50 QPS (~130M requests/month) in Frankfurt with 1.8 MB Files:
 
 1. **Implement Quick Wins (Week 1)**
    - ✅ Reduce CloudWatch logging to errors only
    - ✅ Optimize file uploads (compression, formats)
    - ✅ Keep current architecture (no major changes needed)
-   - Expected savings: $5,567/month
+   - Expected savings: $2,702/month
 
 2. **Code Optimizations (Week 2)**
    - ✅ Switch to ECDSA keys for faster signing
@@ -596,12 +604,18 @@ Expected savings: 10-15% of CloudFront costs = ~$3,000-$4,600/month
 
 5. **Cost Optimization Best Practices (Frankfurt-specific)**
    - Review AWS Cost Explorer monthly
-   - Set budget alerts at $28,000 and $35,000
+   - Set budget alerts at $13,000 and $16,000 (adjusted for 1.8MB files)
    - Use AWS Trusted Advisor recommendations
    - Monitor for unused resources
    - **Note**: Frankfurt pricing is ~0.5% higher than US East
    - API Gateway and DynamoDB are the main price differentials (+18-21%)
-   - Consider US East for significantly lower costs if latency allows
+   - With 1.8MB files, cost difference is minimal (~$64/month)
+   
+6. **File Size Impact**
+   - **1.8 MB files = 54% cost reduction** vs 5 MB
+   - Encourage users to upload optimized files
+   - Consider implementing file size limits
+   - Monitor average file size trends monthly
 
 ---
 
@@ -702,14 +716,17 @@ resource "aws_budgets_budget" "monthly_cost" {
 |--------|-------|
 | **Region** | **Frankfurt (eu-central-1)** |
 | **Traffic** | 50 QPS (129.6M requests/month) |
-| **Baseline Cost** | $32,434/month |
-| **Optimized Cost** | $26,268/month |
-| **Savings** | $6,166/month (19%) |
-| **vs US East** | +$80/month (+0.3% optimized) |
-| **Largest Cost** | CloudFront data transfer (79% of total) |
-| **Quick Wins** | Reduce logging, optimize files, ECDSA keys |
+| **Avg File Size** | **1.8 MB** |
+| **Baseline Cost** | $15,285/month |
+| **Optimized Cost** | $11,984/month |
+| **Savings** | $3,301/month (22%) |
+| **vs US East** | +$64/month (+0.5% optimized) |
+| **Largest Cost** | CloudFront data transfer (91% of baseline) |
+| **Quick Wins** | Reduce logging, ECDSA keys, signed cookies |
 | **ROI Timeline** | 1-2 weeks |
-| **Annual Cost** | $315,216 (optimized) |
+| **Annual Cost** | $143,808 (optimized) |
+
+**Key Insight:** With 1.8 MB files, costs are **54% lower** than 5 MB scenario!
 
 ---
 
@@ -727,6 +744,42 @@ For questions or assistance with implementation, refer to:
 - `README.md` - Infrastructure setup
 - `lambda/lambda_function.py` - Lambda implementation
 
+---
+
+## Frankfurt vs US East: Decision Guide
+
+### Choose Frankfurt (eu-central-1) if:
+✅ Your users are primarily in Europe  
+✅ Low latency to European users is critical  
+✅ GDPR compliance requires EU data residency  
+✅ The +$80-150/month cost difference is acceptable  
+
+**Latency Benefits:**
+- Frankfurt to Berlin: ~10ms
+- Frankfurt to London: ~15ms
+- Frankfurt to Paris: ~15ms
+- US East to Berlin: ~90-120ms (9-12x higher)
+
+### Choose US East (us-east-1) if:
+✅ Your users are global or US-based  
+✅ Cost optimization is top priority  
+✅ No data residency requirements  
+✅ Latency difference is acceptable  
+
+**Cost Savings (vs Frankfurt):**
+- Baseline: -$153/month (-0.5%)
+- Optimized: -$80/month (-0.3%)
+- Annual: -$960/year
+
+### Hybrid Approach:
+Consider **multi-region deployment** if:
+- You have significant users in both US and Europe
+- Can afford ~2x infrastructure costs
+- Need optimal latency globally
+- Want geographic redundancy
+
+**Multi-region costs:** ~$52,536/month (2x optimized single-region)
+- AWS Well-Architected Framework - Cost Optimization Pillar
 
 ---
 
