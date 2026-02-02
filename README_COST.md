@@ -34,7 +34,7 @@ This document provides detailed cost calculations for running the email attachme
 - Baseline costs: +0.5% higher in Frankfurt
 - Optimized costs: +0.3% higher in Frankfurt
 - Difference: ~$80-150/month at 50 QPS
-- **Recommendation**: If your users are primarily in Europe, Frankfurt latency benefits outweigh the minimal cost difference
+
 
 ---
 
