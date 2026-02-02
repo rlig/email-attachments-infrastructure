@@ -2,12 +2,39 @@
 
 This document provides detailed cost calculations for running the email attachments infrastructure at scale.
 
+**Region:** Frankfurt (eu-central-1)  
+**Currency:** USD  
+**Pricing as of:** February 2026
+
 ## Table of Contents
+- [Frankfurt Pricing Overview](#frankfurt-pricing-overview)
 - [Baseline Costs (Low Traffic)](#baseline-costs-low-traffic)
-- [High-Scale Costs (7,000 QPS)](#high-scale-costs-7000-qps)
+- [Moderate-Scale Costs (50 QPS)](#moderate-scale-costs-50-qps)
 - [Cost Optimizations](#cost-optimizations)
 - [Optimization Implementation](#optimization-implementation)
 - [Recommendations](#recommendations)
+
+---
+
+## Frankfurt Pricing Overview
+
+**Key Differences from US East (us-east-1):**
+
+| Service | Frankfurt | US East | Difference |
+|---------|-----------|---------|------------|
+| **API Gateway** | $4.25/1M requests | $3.50/1M | +21% |
+| **Lambda** | Same | Same | 0% |
+| **DynamoDB Reads** | $0.285/1M | $0.25/1M | +14% |
+| **DynamoDB Writes** | $1.428/1M | $1.25/1M | +14% |
+| **S3 Storage** | $0.0245/GB | $0.023/GB | +6.5% |
+| **CloudFront Data** | Same | Same | 0% |
+| **CloudFront Requests** | $0.012/10K | $0.01/10K | +20% |
+
+**Overall Impact:**
+- Baseline costs: +0.5% higher in Frankfurt
+- Optimized costs: +0.3% higher in Frankfurt
+- Difference: ~$80-150/month at 50 QPS
+- **Recommendation**: If your users are primarily in Europe, Frankfurt latency benefits outweigh the minimal cost difference
 
 ---
 
@@ -15,17 +42,17 @@ This document provides detailed cost calculations for running the email attachme
 
 **Scenario: 10,000 users, 1M requests/month**
 
-| Service | Monthly Cost |
-|---------|--------------|
-| S3 (1TB storage) | $23 |
-| CloudFront (1TB transfer) | $85 |
-| Lambda (1M invocations) | $20 |
-| DynamoDB (on-demand) | $25 |
-| API Gateway (1M requests) | $35 |
-| Cognito (up to 50K MAU) | Free |
-| Secrets Manager | $0.40 |
-| CloudWatch | $10 |
-| **TOTAL** | **~$198/month** |
+| Service | Monthly Cost | Frankfurt Pricing |
+|---------|--------------|-------------------|
+| S3 (1TB storage) | $25.60 | €0.0245/GB |
+| CloudFront (1TB transfer) | $85 | Europe pricing |
+| Lambda (1M invocations) | $20 | Same as US |
+| DynamoDB (on-demand) | $28.50 | €0.285/1M reads |
+| API Gateway (1M requests) | $42.50 | €4.25/1M |
+| Cognito (up to 50K MAU) | Free | Same as US |
+| Secrets Manager | $0.40 | Same as US |
+| CloudWatch | $10 | Same as US |
+| **TOTAL** | **~$212/month** | **+7% vs US East** |
 
 ---
 
@@ -45,17 +72,17 @@ This document provides detailed cost calculations for running the email attachme
 
 #### 1. API Gateway 💰
 
-**Pricing Tiers:**
-- First 333M requests: $3.50 per million
-- Next 667M requests: $2.80 per million
-- Over 1B requests: $2.38 per million
+**Frankfurt (eu-central-1) Pricing Tiers:**
+- First 333M requests: $4.25 per million
+- Next 667M requests: $3.40 per million
+- Over 1B requests: $2.89 per million
 
 **Calculation:**
 ```
-129.6M requests × $3.50/1M = $453.60
+129.6M requests × $4.25/1M = $550.80
 ```
 
-**Monthly Cost: $454**
+**Monthly Cost: $551** (+21% vs US East)
 
 ---
 
@@ -65,6 +92,10 @@ This document provides detailed cost calculations for running the email attachme
 - 129.6 million invocations/month
 - Average execution time: 200ms
 - Memory allocation: 512MB (0.5GB)
+
+**Frankfurt (eu-central-1) Pricing:**
+- Requests: $0.20 per 1M (same as US)
+- Compute: $0.0000166667 per GB-second (same as US)
 
 **Invocation Costs:**
 ```
@@ -77,26 +108,30 @@ GB-seconds: 129.6M × 0.2s × 0.5GB = 12.96M GB-seconds
 Cost: (12.96M - 400K free) × $0.0000166667 = $209.33
 ```
 
-**Monthly Cost: $235**
+**Monthly Cost: $235** (same as US)
 
 ---
 
 #### 3. Amazon DynamoDB 💰
 
-**With PAY_PER_REQUEST (On-Demand):**
+**With PAY_PER_REQUEST (On-Demand) in Frankfurt:**
 
-Each request requires 2-3 DynamoDB reads:
+**Frankfurt Pricing:**
+- Read requests: $0.285 per million (vs $0.25 in US)
+- Write requests: $1.428 per million (vs $1.25 in US)
+
+Each request requires 2 DynamoDB reads:
 - UserEmailAccess table: 1 read
-- EmailAttachments table (S3KeyIndex): 1 read
+- EmailAttachments table (direct lookup): 1 read
 - Total: ~259.2 million read requests/month
 
 ```
-259.2M × $0.25/1M reads = $64.80
+259.2M × $0.285/1M reads = $73.87
 ```
 
 **Write requests (email metadata updates):**
 ```
-~10M writes × $1.25/1M writes = $12.50
+~10M writes × $1.428/1M writes = $14.28
 ```
 
 **✅ RECOMMENDED: Keep On-Demand**
@@ -113,7 +148,7 @@ For this traffic level, on-demand pricing is more cost-effective than provisione
 - Average file size: 5MB per attachment
 - Monthly data transfer: 129.6M × 5MB = **648 TB**
 
-**Data Transfer Pricing (US/Europe):**
+**Data Transfer Pricing (Europe - Frankfurt):**
 ```
 First 10TB:     10TB × $0.085/GB     = $870
 Next 40TB:      40TB × $0.080/GB     = $3,276.80
@@ -123,16 +158,18 @@ Remaining 148TB: 148TB × $0.040/GB   = $6,062.08
 Total data transfer:                   $30,688.88
 ```
 
-**Request Pricing:**
+**Request Pricing (Europe):**
 ```
-HTTPS requests: 129.6M × $0.0100/10,000 = $129.60
+HTTPS requests: 129.6M × $0.012/10,000 = $155.52
 ```
 
-**Monthly Cost: $30,818**
+**Monthly Cost: $30,844** (+0.1% vs US, mainly request costs)
 
 ---
 
 #### 5. Amazon S3 💰
+
+**Frankfurt Pricing:**
 
 **GET Requests:**
 ```
@@ -141,10 +178,10 @@ HTTPS requests: 129.6M × $0.0100/10,000 = $129.60
 
 **Storage (assuming 10TB):**
 ```
-10,240GB × $0.023/GB = $235
+10,240GB × $0.0245/GB = $250.88
 ```
 
-**Monthly Cost: $287**
+**Monthly Cost: $303** (+5.6% vs US)
 
 ---
 
@@ -206,19 +243,27 @@ Ingestion: ~150GB × $0.50/GB = $75
 
 ### 💰 TOTAL MONTHLY COST (Without Optimizations)
 
-| Service | Monthly Cost |
-|---------|--------------|
-| API Gateway | $454 |
-| Lambda | $235 |
-| DynamoDB (on-demand) | $77 |
-| CloudFront | $30,818 |
-| S3 | $287 |
-| Cognito | $0 |
-| Secrets Manager | $1 |
-| CloudWatch | $409 |
-| **TOTAL** | **$32,281/month** |
+**Frankfurt (eu-central-1) Pricing:**
 
-**Annual Cost: ~$387,372**
+| Service | Monthly Cost | vs US East |
+|---------|--------------|------------|
+| API Gateway | $551 | +21% |
+| Lambda | $235 | same |
+| DynamoDB (on-demand) | $91 | +18% |
+| CloudFront | $30,844 | +0.1% |
+| S3 | $303 | +5.6% |
+| Cognito | $0 | same |
+| Secrets Manager | $1 | same |
+| CloudWatch | $409 | same |
+| **TOTAL** | **$32,434/month** | **+0.5%** |
+
+**Annual Cost: ~$389,208** (+$1,836/year vs US East)
+
+**Key Findings:**
+- Frankfurt is ~0.5% more expensive overall
+- API Gateway (+21%) and DynamoDB (+18%) are notably higher
+- CloudFront data transfer costs are similar (Europe pricing)
+- Lambda and CloudWatch costs are identical
 
 ---
 
@@ -466,25 +511,30 @@ Expected savings: 10-15% of CloudFront costs = ~$3,000-$4,600/month
 
 ---
 
-## 💰 OPTIMIZED COST BREAKDOWN
+## 💰 OPTIMIZED COST BREAKDOWN (Frankfurt)
 
 ### With All Optimizations Applied
 
 | Service | Baseline Cost | Optimized Cost | Savings |
 |---------|---------------|----------------|---------|
-| API Gateway | $454 | $137 | $317 |
+| API Gateway | $551 | $166 | $385 |
 | Lambda (ECDSA + cookies) | $235 | $21 | $214 |
-| DynamoDB (on-demand) | $77 | $77 | $0 |
-| CloudFront (file optimization) | $30,818 | $25,600 | $5,218 |
-| S3 | $287 | $287 | $0 |
+| DynamoDB (on-demand) | $91 | $91 | $0 |
+| CloudFront (file optimization) | $30,844 | $25,621 | $5,223 |
+| S3 | $303 | $303 | $0 |
 | Cognito | $0 | $0 | $0 |
 | CloudWatch (reduced logging) | $409 | $65 | $344 |
 | Secrets Manager | $1 | $1 | $0 |
-| **TOTAL** | **$32,281/month** | **$26,188/month** | **$6,093/month** |
+| **TOTAL** | **$32,434/month** | **$26,268/month** | **$6,166/month** |
 
-**Annual Cost: $314,256** (down from $387,372)
+**Annual Cost: $315,216** (down from $389,208)
 
 **Total Savings: 19% reduction** 🎉
+
+**Frankfurt vs US East (Optimized):**
+- Frankfurt optimized: $26,268/month
+- US East optimized: $26,188/month
+- Difference: +$80/month (+0.3%)
 
 ### Not Recommended at This Scale
 - ❌ ElastiCache Redis: Costs more than it saves
@@ -520,18 +570,18 @@ Expected savings: 10-15% of CloudFront costs = ~$3,000-$4,600/month
 
 ## Recommendations
 
-### For 50 QPS (~130M requests/month):
+### For 50 QPS (~130M requests/month) in Frankfurt:
 
 1. **Implement Quick Wins (Week 1)**
    - ✅ Reduce CloudWatch logging to errors only
    - ✅ Optimize file uploads (compression, formats)
    - ✅ Keep current architecture (no major changes needed)
-   - Expected savings: $5,562/month
+   - Expected savings: $5,567/month
 
 2. **Code Optimizations (Week 2)**
    - ✅ Switch to ECDSA keys for faster signing
    - ✅ Implement signed cookies for email-level access
-   - Expected savings: $531/month
+   - Expected savings: $599/month
 
 3. **Monitor Growth**
    - Track requests per second trends
@@ -544,11 +594,14 @@ Expected savings: 10-15% of CloudFront costs = ~$3,000-$4,600/month
    - At 500 QPS: Consider DynamoDB DAX
    - At 1000+ QPS: Contact AWS for CloudFront PPA
 
-5. **Cost Optimization Best Practices**
+5. **Cost Optimization Best Practices (Frankfurt-specific)**
    - Review AWS Cost Explorer monthly
    - Set budget alerts at $28,000 and $35,000
    - Use AWS Trusted Advisor recommendations
    - Monitor for unused resources
+   - **Note**: Frankfurt pricing is ~0.5% higher than US East
+   - API Gateway and DynamoDB are the main price differentials (+18-21%)
+   - Consider US East for significantly lower costs if latency allows
 
 ---
 
@@ -643,18 +696,20 @@ resource "aws_budgets_budget" "monthly_cost" {
 
 ---
 
-## Summary
+## Summary (Frankfurt eu-central-1)
 
 | Metric | Value |
 |--------|-------|
+| **Region** | **Frankfurt (eu-central-1)** |
 | **Traffic** | 50 QPS (129.6M requests/month) |
-| **Baseline Cost** | $32,281/month |
-| **Optimized Cost** | $26,188/month |
-| **Savings** | $6,093/month (19%) |
+| **Baseline Cost** | $32,434/month |
+| **Optimized Cost** | $26,268/month |
+| **Savings** | $6,166/month (19%) |
+| **vs US East** | +$80/month (+0.3% optimized) |
 | **Largest Cost** | CloudFront data transfer (79% of total) |
 | **Quick Wins** | Reduce logging, optimize files, ECDSA keys |
 | **ROI Timeline** | 1-2 weeks |
-| **Annual Cost** | $314,256 (optimized) |
+| **Annual Cost** | $315,216 (optimized) |
 
 ---
 
@@ -671,7 +726,7 @@ resource "aws_budgets_budget" "monthly_cost" {
 For questions or assistance with implementation, refer to:
 - `README.md` - Infrastructure setup
 - `lambda/lambda_function.py` - Lambda implementation
-- AWS Well-Architected Framework - Cost Optimization Pillar
+
 
 ---
 
