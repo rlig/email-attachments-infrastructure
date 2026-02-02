@@ -162,7 +162,7 @@ Total data transfer:                          $13,702.83
 HTTPS requests: 129.6M × $0.012/10,000 = $155.52
 ```
 
-**Monthly Cost: $13,858** (vs $30,844 with 5MB files - **55% reduction!**)
+**Monthly Cost: $13,858**
 
 ---
 
